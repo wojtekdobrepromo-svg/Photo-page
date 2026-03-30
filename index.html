@@ -3,63 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aparat HD - GitHub</title>
+    <title>Auto Foto HD</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #121212; color: white; }
-        video { width: 90%; max-width: 800px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        button { margin: 20px; padding: 15px 30px; font-size: 18px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
-        button:hover { background: #0056b3; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #000; color: white; margin: 0; }
+        video { width: 100%; max-width: 600px; border: 2px solid #333; }
+        #status { margin-top: 10px; color: #aaa; }
         canvas { display: none; }
     </style>
 </head>
 <body>
 
-    <h1>Aparat Foto HD</h1>
     <video id="video" autoplay playsinline></video>
-    <button id="snap">Zrób zdjęcie</button>
+    <div id="status">Inicjalizacja kamery...</div>
     <canvas id="canvas"></canvas>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        const snap = document.getElementById('snap');
+        const status = document.getElementById('status');
 
-        // Funkcja uruchamiająca kamerę w max rozdzielczości
-        async function initCamera() {
+        async function startApp() {
             try {
+                // Prośba o najwyższą rozdzielczość
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { 
-                        width: { ideal: 4096 }, // Próba wymuszenia 4K
-                        height: { ideal: 2160 } 
+                        width: { ideal: 7680 }, // Próba wymuszenia 8K/4K
+                        height: { ideal: 4320 } 
                     }
                 });
+                
                 video.srcObject = stream;
+                status.innerText = "Kamera aktywna. Przygotowuję zdjęcie...";
+
+                // Czekamy chwilę, aż obraz się ustabilizuje (autofokus/ekspozycja)
+                video.onloadedmetadata = () => {
+                    setTimeout(takePhoto, 2000); // Zdjęcie po 2 sekundach od startu
+                };
+
             } catch (err) {
-                console.error("Błąd dostępu do kamery: ", err);
-                alert("Nie można uzyskać dostępu do kamery.");
+                status.innerText = "Błąd: Brak uprawnień do kamery.";
+                console.error(err);
             }
         }
 
-        // Funkcja robienia zdjęcia
-        snap.addEventListener('click', () => {
+        function takePhoto() {
             const context = canvas.getContext('2d');
+            
+            // Ustawienie wymiarów płótna na realną rozdzielczość strumienia
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
+            
+            // Przechwycenie klatki
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Generowanie nazwy pliku: RRRR-MM-DD_GG-MM-SS
+            // Generowanie nazwy: RRRR-MM-DD_GG-mm-ss
             const now = new Date();
-            const timestamp = now.toISOString().replace(/[:T]/g, '-').split('.')[0];
-            const fileName = `foto_${timestamp}.png`;
+            const dateStr = now.getFullYear() + '-' + 
+                            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                            String(now.getDate()).padStart(2, '0') + '_' + 
+                            String(now.getHours()).padStart(2, '0') + '-' + 
+                            String(now.getMinutes()).padStart(2, '0') + '-' + 
+                            String(now.getSeconds()).padStart(2, '0');
 
-            // Pobieranie zdjęcia
+            // Automatyczne pobieranie
             const link = document.createElement('a');
-            link.download = fileName;
-            link.href = canvas.toDataURL('image/png');
+            link.download = `foto_${dateStr}.jpg`;
+            link.href = canvas.toDataURL('image/jpeg', 1.0); // Jakość 100%
             link.click();
-        });
 
-        initCamera();
+            status.innerText = `Zdjęcie zapisane jako: foto_${dateStr}.jpg`;
+        }
+
+        window.onload = startApp;
     </script>
 </body>
 </html>
