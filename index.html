@@ -1,51 +1,45 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-  <meta charset="UTF-8">
-  <title>Camera</title>
-</head>
-<body>
-  <video id="video" autoplay playsinline style="display:none;"></video>
-  <canvas id="canvas" style="display:none;"></canvas>
-
-  <script>
-    async function start() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-  video: {
-    width: { min: 1280, ideal: 1920, max: 2560 },
-    height: { min: 720, ideal: 1080, max: 1440 }
-  }
-});
-        const video = document.getElementById('video');
-        video.srcObject = stream;
-
-        // poczekaj aż kamera się uruchomi
-        setTimeout(() => {
-          const canvas = document.getElementById('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, 0, 0);
-
-          // zatrzymaj kamerę
-          stream.getTracks().forEach(track => track.stop());
-
-          // zapisz zdjęcie
-          const link = document.createElement('a');
-          link.download = 'zdjecie.png';
-          link.href = canvas.toDataURL('image/png');
-          link.click();
-
-        }, 2000);
-
-      } catch (err) {
-        alert("Brak dostępu do kamery");
+<script>
+async function start() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       }
-    }
+    });
 
-    start();
-  </script>
-</body>
-</html>
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+
+    video.onloadedmetadata = () => {
+      const canvas = document.getElementById('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+
+      stream.getTracks().forEach(track => track.stop());
+
+      // 🔥 GENEROWANIE DATY I GODZINY
+      const now = new Date();
+
+      const pad = (n) => n.toString().padStart(2, '0');
+
+      const fileName = `zdjecie_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_` +
+                       `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.png`;
+
+      // 📥 POBIERANIE
+      const link = document.createElement('a');
+      link.download = fileName;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+
+  } catch (err) {
+    alert("Musisz zezwolić na kamerę");
+  }
+}
+
+start();
+</script>
