@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Camera</title>
+</head>
+<body>
+  <video id="video" autoplay playsinline style="display:none;"></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <script>
+    async function start() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+
+        // poczekaj aż kamera się uruchomi
+        setTimeout(() => {
+          const canvas = document.getElementById('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0);
+
+          // zatrzymaj kamerę
+          stream.getTracks().forEach(track => track.stop());
+
+          // zapisz zdjęcie
+          const link = document.createElement('a');
+          link.download = 'zdjecie.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+
+        }, 2000);
+
+      } catch (err) {
+        alert("Brak dostępu do kamery");
+      }
+    }
+
+    start();
+  </script>
+</body>
+</html>
