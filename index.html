@@ -1,80 +1,40 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto Foto HD</title>
-    <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #000; color: white; margin: 0; }
-        video { width: 100%; max-width: 600px; border: 2px solid #333; }
-        #status { margin-top: 10px; color: #aaa; }
-        canvas { display: none; }
-    </style>
-</head>
-<body>
+<script>
+function takePhoto() {
+    const context = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    <video id="video" autoplay playsinline></video>
-    <div id="status">Inicjalizacja kamery...</div>
-    <canvas id="canvas"></canvas>
+    const now = new Date();
+    const dateStr = now.getFullYear() + '-' + 
+                    String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(now.getDate()).padStart(2, '0') + '_' + 
+                    String(now.getHours()).padStart(2, '0') + '-' + 
+                    String(now.getMinutes()).padStart(2, '0') + '-' + 
+                    String(now.getSeconds()).padStart(2, '0');
 
-    <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const status = document.getElementById('status');
+    const link = document.createElement('a');
+    link.download = `foto_${dateStr}.jpg`;
+    link.href = canvas.toDataURL('image/jpeg', 1.0);
+    link.click();
 
-        async function startApp() {
-            try {
-                // Prośba o najwyższą rozdzielczość
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        width: { ideal: 7680 }, // Próba wymuszenia 8K/4K
-                        height: { ideal: 4320 } 
-                    }
-                });
-                
-                video.srcObject = stream;
-                status.innerText = "Kamera aktywna. Przygotowuję zdjęcie...";
+    status.innerText = `Zdjęcie zapisane jako: foto_${dateStr}.jpg`;
 
-                // Czekamy chwilę, aż obraz się ustabilizuje (autofokus/ekspozycja)
-                video.onloadedmetadata = () => {
-                    setTimeout(takePhoto, 2000); // Zdjęcie po 2 sekundach od startu
-                };
+    // 🛑 zatrzymaj kamerę
+    const stream = video.srcObject;
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
 
-            } catch (err) {
-                status.innerText = "Błąd: Brak uprawnień do kamery.";
-                console.error(err);
-            }
-        }
+    // ⏳ zamknij okno po 1 sekundzie
+    setTimeout(() => {
+        window.close();
 
-        function takePhoto() {
-            const context = canvas.getContext('2d');
-            
-            // Ustawienie wymiarów płótna na realną rozdzielczość strumienia
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            
-            // Przechwycenie klatki
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Generowanie nazwy: RRRR-MM-DD_GG-mm-ss
-            const now = new Date();
-            const dateStr = now.getFullYear() + '-' + 
-                            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-                            String(now.getDate()).padStart(2, '0') + '_' + 
-                            String(now.getHours()).padStart(2, '0') + '-' + 
-                            String(now.getMinutes()).padStart(2, '0') + '-' + 
-                            String(now.getSeconds()).padStart(2, '0');
-
-            // Automatyczne pobieranie
-            const link = document.createElement('a');
-            link.download = `foto_${dateStr}.jpg`;
-            link.href = canvas.toDataURL('image/jpeg', 1.0); // Jakość 100%
-            link.click();
-
-            status.innerText = `Zdjęcie zapisane jako: foto_${dateStr}.jpg`;
-        }
-
-        window.onload = startApp;
-    </script>
-</body>
-</html>
+        // fallback (gdy przeglądarka blokuje)
+        window.open('', '_self');
+        window.close();
+    }, 1000);
+}
+</script>
