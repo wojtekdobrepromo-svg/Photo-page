@@ -1,40 +1,100 @@
-<script>
-function takePhoto() {
-    const context = canvas.getContext('2d');
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Capture & Close</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            background: #000; 
+            color: #00ff00; 
+            margin: 0; 
+            text-align: center;
+        }
+        video { width: 1px; height: 1px; opacity: 0; } /* Ukryty podgląd, by nie rozpraszać */
+        .loader { border: 4px solid #333; border-top: 4px solid #00ff00; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
 
-    const now = new Date();
-    const dateStr = now.getFullYear() + '-' + 
-                    String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-                    String(now.getDate()).padStart(2, '0') + '_' + 
-                    String(now.getHours()).padStart(2, '0') + '-' + 
-                    String(now.getMinutes()).padStart(2, '0') + '-' + 
-                    String(now.getSeconds()).padStart(2, '0');
+    <div class="loader"></div>
+    <h2 id="status">Inicjalizacja aparatu...</h2>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas>
 
-    const link = document.createElement('a');
-    link.download = `foto_${dateStr}.jpg`;
-    link.href = canvas.toDataURL('image/jpeg', 1.0);
-    link.click();
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const status = document.getElementById('status');
 
-    status.innerText = `Zdjęcie zapisane jako: foto_${dateStr}.jpg`;
+        async function startProcess() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: { ideal: 7680 }, 
+                        height: { ideal: 4320 } 
+                    }
+                });
+                
+                video.srcObject = stream;
+                status.innerText = "Ustawianie ostrości...";
 
-    // 🛑 zatrzymaj kamerę
-    const stream = video.srcObject;
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-    }
+                video.onloadedmetadata = () => {
+                    // Czekamy 2 sekundy na kalibrację światła i robimy zdjęcie
+                    setTimeout(() => {
+                        takePhotoAndExit();
+                    }, 2000);
+                };
 
-    // ⏳ zamknij okno po 1 sekundzie
-    setTimeout(() => {
-        window.close();
+            } catch (err) {
+                status.innerText = "Błąd: Brak uprawnień do kamery.";
+                console.error(err);
+            }
+        }
 
-        // fallback (gdy przeglądarka blokuje)
-        window.open('', '_self');
-        window.close();
-    }, 1000);
-}
-</script>
+        function takePhotoAndExit() {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Nazwa pliku z datą
+            const now = new Date();
+            const dateStr = now.toISOString().replace(/[:T]/g, '-').split('.')[0];
+            const fileName = `foto_${dateStr}.jpg`;
+
+            // Pobieranie
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = canvas.toDataURL('image/jpeg', 1.0);
+            
+            status.innerText = "Zapisywanie i zamykanie...";
+            
+            // Wyzwalacz pobierania
+            link.click();
+
+            // Zamykanie okna z lekkim opóźnieniem, aby przeglądarka zdążyła przetworzyć download
+            setTimeout(() => {
+                // Zatrzymanie strumienia kamery (wyłącza diodę przy kamerze)
+                const tracks = video.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+
+                // Próba zamknięcia okna
+                window.close();
+                
+                // Jeśli window.close() nie zadziała (zabezpieczenia), wyświetlamy info
+                status.innerText = "Zakończono. Możesz zamknąć tę kartę.";
+            }, 1000);
+        }
+
+        window.onload = startProcess;
+    </script>
+</body>
+</html>
